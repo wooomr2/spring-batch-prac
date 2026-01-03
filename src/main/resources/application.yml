@@ -10,3 +10,9 @@ spring:
   batch:
     jdbc:
       platform: mysql
+    job:
+      name: ${job.name:NONE}
+
+logging:
+  level:
+    root: info
