@@ -1,5 +1,11 @@
-package com.springbatch;
+package com.springbatch.config;
 
+import com.springbatch.entity.Payment;
+import com.springbatch.entity.PaymentSource;
+import com.springbatch.repository.PaymentRepository;
+import jakarta.persistence.EntityManagerFactory;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.StepScope;
@@ -7,27 +13,34 @@ import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
-import org.springframework.batch.item.ItemReader;
+import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemWriter;
-import org.springframework.batch.item.support.ListItemReader;
+import org.springframework.batch.item.database.JpaItemWriter;
+import org.springframework.batch.item.database.JpaPagingItemReader;
+import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import java.math.BigDecimal;
-import java.util.List;
+import java.time.LocalDate;
+import java.util.Collections;
 
+@Slf4j
 @Configuration
+@AllArgsConstructor
 public class PaymentReportJobConfig {
 
-    // Job name + Job Parameter가 unique한지 감지 함
-    @Bean
-    public Job paymentReportJob(JobRepository jobRepository,
-                                Step paymentReportStep) {
+    private final EntityManagerFactory entityManagerFactory;
+    private final PlatformTransactionManager transactionManager;
+    private final JobRepository jobRepository;
 
+    private final PaymentRepository paymentRepository;
+
+    @Bean
+    public Job paymentReportJob(Step paymentReportStep) {
         return new JobBuilder("paymentReportJob", jobRepository)
-                // incrementer를 통해 Job Parameter가 동일하더라도 새로운 Job Instance로 인식하게 함
                 .incrementer(new RunIdIncrementer())
                 .start(paymentReportStep)
                 .build();
@@ -35,65 +48,57 @@ public class PaymentReportJobConfig {
 
     @Bean
     public Step paymentReportStep(
-            JobRepository jobRepository,
-            ItemReader<BigDecimal> paymentItemReader,
-            ItemWriter<BigDecimal> paymentItemWriter,
-            PlatformTransactionManager transactionManager
+            JpaPagingItemReader<PaymentSource> paymentReportReader
     ) {
         return new StepBuilder("paymentReportStep", jobRepository)
-                .<BigDecimal, BigDecimal>chunk(5, transactionManager)
-                .reader(paymentItemReader)
-                .writer(paymentItemWriter)
+                .<PaymentSource, Payment>chunk(10, transactionManager)
+                .reader(paymentReportReader)
+                .processor(itemProcessor())
+//                .writer(itemWriter())
+                .writer(paymentItemWriter())
                 .build();
     }
 
     @Bean
     @StepScope
-    public ItemReader<BigDecimal> paymentItemReader(
-            @Value("#{jobParameters['targetDate']}") String targetDate
+    public JpaPagingItemReader<PaymentSource> paymentReportReader(
+            @Value("#{jobParameters['paymentDate']}") LocalDate paymentDate
     ) {
-        System.out.println("reader targetDate = " + targetDate);
-        return new ListItemReader<>(getPayments());
+        return new JpaPagingItemReaderBuilder<PaymentSource>()
+                .name("paymentReportReader")
+                .entityManagerFactory(entityManagerFactory)
+                .queryString("""
+                        SELECT ps
+                        FROM PaymentSource ps
+                        WHERE ps.paymentDate = :paymentDate
+                        """)
+                .parameterValues(Collections.singletonMap("paymentDate", paymentDate))
+                .pageSize(10)
+                .build();
     }
+
+    private ItemProcessor<PaymentSource, Payment> itemProcessor() {
+        return paymentSource -> {
+            if (paymentSource.getFinalAmount().compareTo(BigDecimal.ZERO) == 0) {
+                return null;
+            }
+
+            return new Payment(null,
+                    paymentSource.getFinalAmount(),
+                    paymentSource.getPaymentDate(),
+                    "COMPLETED"
+            );
+        };
+    }
+
+//    private ItemWriter<Payment> itemWriter() {
+//        return paymentRepository::saveAllAndFlush;
+//    }
 
     @Bean
-    @StepScope
-    public ItemWriter<BigDecimal> paymentItemWriter(
-            @Value("#{jobParameters['targetDate']}") String targetDate
-    ) {
-        System.out.println("writer targetDate = " + targetDate);
-        return items -> items.forEach(System.out::println);
-    }
-
-    private List<BigDecimal> getPayments() {
-        return List.of(
-                BigDecimal.valueOf(100.50),
-                BigDecimal.valueOf(200.75),
-                BigDecimal.valueOf(300.00),
-                BigDecimal.valueOf(400.25),
-                BigDecimal.valueOf(500.80),
-                BigDecimal.valueOf(600.10),
-                BigDecimal.valueOf(100.50),
-                BigDecimal.valueOf(200.75),
-                BigDecimal.valueOf(300.00),
-                BigDecimal.valueOf(400.25),
-                BigDecimal.valueOf(500.80),
-                BigDecimal.valueOf(600.10),
-                BigDecimal.valueOf(200.75),
-                BigDecimal.valueOf(300.00),
-                BigDecimal.valueOf(400.25),
-                BigDecimal.valueOf(500.80),
-                BigDecimal.valueOf(600.10),
-                BigDecimal.valueOf(200.75),
-                BigDecimal.valueOf(300.00),
-                BigDecimal.valueOf(400.25),
-                BigDecimal.valueOf(500.80),
-                BigDecimal.valueOf(600.10),
-                BigDecimal.valueOf(200.75),
-                BigDecimal.valueOf(300.00),
-                BigDecimal.valueOf(400.25),
-                BigDecimal.valueOf(500.80),
-                BigDecimal.valueOf(600.10)
-        );
+    public JpaItemWriter<Payment> paymentItemWriter() {
+        JpaItemWriter<Payment> writer = new JpaItemWriter<>();
+        writer.setEntityManagerFactory(entityManagerFactory);
+        return writer;
     }
 }
