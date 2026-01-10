@@ -2,6 +2,7 @@ package com.springbatch.job;
 
 import com.springbatch.entity.Payment;
 import com.springbatch.entity.PaymentSource;
+import com.springbatch.exception.InvalidPaymentAmountException;
 import com.springbatch.repository.PaymentRepository;
 import jakarta.persistence.EntityManagerFactory;
 import lombok.AllArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.core.step.skip.LimitCheckingItemSkipPolicy;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JpaPagingItemReader;
@@ -22,7 +24,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collections;
 
@@ -56,6 +57,19 @@ public class PaymentReportJobConfig {
 //                .writer(itemWriter())
 //                .writer(paymentItemWriter())
                 .writer(paymentReportWriter())
+                .faultTolerant()
+//                .skipLimit(1) // 최대 n번까지 skip 허용
+//                .skip(InvalidPaymentAmountException.class)
+//                .skipPolicy(new LimitCheckingItemSkipPolicy())
+                .skipPolicy(new LimitCheckingItemSkipPolicy(2, throwable -> {
+                    if (throwable instanceof InvalidPaymentAmountException) {
+                        return true;
+                    } else if (throwable instanceof IllegalArgumentException) {
+                        return false;
+                    } else {
+                        return false;
+                    }
+                }))
                 .build();
     }
 
@@ -79,8 +93,16 @@ public class PaymentReportJobConfig {
 
     private ItemProcessor<PaymentSource, Payment> itemProcessor() {
         return paymentSource -> {
-            if (paymentSource.getFinalAmount().compareTo(BigDecimal.ZERO) == 0) {
-                return null;
+//            /* 최종금액이 0원인 경우 제외 */
+//            if (paymentSource.getFinalAmount().compareTo(BigDecimal.ZERO) == 0) {
+//                return null;
+//            }
+
+            /* 할인금액이 마이너스가 되는 케이스(원장에서 처리가 잘못된 case) */
+            if (paymentSource.getDiscountAmount().signum() == -1) {
+                final String msg = "할인금액이 0이 아닌 결제는 처리할 수 없습니다. 현재 할인금액" + paymentSource.getDiscountAmount();
+                log.error(msg);
+                throw new InvalidPaymentAmountException(msg);
             }
 
             return new Payment(null,
