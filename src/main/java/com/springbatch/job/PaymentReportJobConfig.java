@@ -50,26 +50,18 @@ public class PaymentReportJobConfig {
     public Step paymentReportStep(
             JpaPagingItemReader<PaymentSource> paymentReportReader
     ) {
+
+        /**
+         * 1. 상호명을 더이상 PaymentSource에서 관리하지 않음
+         * 2. PaymentSource에서는 사업자번호를 추가하고 이 사업자번호 기반으로 
+         * 3. Payment를 저장할 때 사업자번호를 기준으로 HTTP 통신하여 상호명 질의
+         * */
         return new StepBuilder("paymentReportStep", jobRepository)
                 .<PaymentSource, Payment>chunk(10, transactionManager)
                 .reader(paymentReportReader)
                 .processor(itemProcessor())
-//                .writer(itemWriter())
-//                .writer(paymentItemWriter())
                 .writer(paymentReportWriter())
                 .faultTolerant()
-//                .skipLimit(1) // 최대 n번까지 skip 허용
-//                .skip(InvalidPaymentAmountException.class)
-//                .skipPolicy(new LimitCheckingItemSkipPolicy())
-                .skipPolicy(new LimitCheckingItemSkipPolicy(2, throwable -> {
-                    if (throwable instanceof InvalidPaymentAmountException) {
-                        return true;
-                    } else if (throwable instanceof IllegalArgumentException) {
-                        return false;
-                    } else {
-                        return false;
-                    }
-                }))
                 .build();
     }
 
@@ -93,36 +85,15 @@ public class PaymentReportJobConfig {
 
     private ItemProcessor<PaymentSource, Payment> itemProcessor() {
         return paymentSource -> {
-//            /* 최종금액이 0원인 경우 제외 */
-//            if (paymentSource.getFinalAmount().compareTo(BigDecimal.ZERO) == 0) {
-//                return null;
-//            }
-
-            /* 할인금액이 마이너스가 되는 케이스(원장에서 처리가 잘못된 case) */
-            if (paymentSource.getDiscountAmount().signum() == -1) {
-                final String msg = "할인금액이 0이 아닌 결제는 처리할 수 없습니다. 현재 할인금액" + paymentSource.getDiscountAmount();
-                log.error(msg);
-                throw new InvalidPaymentAmountException(msg);
-            }
 
             return new Payment(null,
                     paymentSource.getFinalAmount(),
                     paymentSource.getPaymentDate(),
+                    null,
                     "COMPLETED"
             );
         };
     }
-
-//    private ItemWriter<Payment> itemWriter() {
-//        return paymentRepository::saveAllAndFlush;
-//    }
-
-//    @Bean
-//    public JpaItemWriter<Payment> paymentItemWriter() {
-//        JpaItemWriter<Payment> writer = new JpaItemWriter<>();
-//        writer.setEntityManagerFactory(entityManagerFactory);
-//        return writer;
-//    }
 
     @Bean
     public ItemWriter<Payment> paymentReportWriter() {

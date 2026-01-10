@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Comment;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -21,6 +22,10 @@ public class PaymentSource {
 
     @Column(nullable = false, length = 100)
     private String partnerCorpName;
+
+    @Comment("파트너 사업자번호")
+    @Column(nullable = false, length = 100)
+    private String partnerBusinessRegistrationNumber;
 
     @Column(nullable = false)
     private BigDecimal originalAmount;
