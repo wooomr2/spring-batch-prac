@@ -1,4 +1,4 @@
-package com.springbatch.config;
+package com.springbatch.job;
 
 import com.springbatch.entity.Payment;
 import com.springbatch.entity.PaymentSource;
@@ -15,7 +15,6 @@ import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemWriter;
-import org.springframework.batch.item.database.JpaItemWriter;
 import org.springframework.batch.item.database.JpaPagingItemReader;
 import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilder;
 import org.springframework.beans.factory.annotation.Value;
@@ -55,7 +54,8 @@ public class PaymentReportJobConfig {
                 .reader(paymentReportReader)
                 .processor(itemProcessor())
 //                .writer(itemWriter())
-                .writer(paymentItemWriter())
+//                .writer(paymentItemWriter())
+                .writer(paymentReportWriter())
                 .build();
     }
 
@@ -95,10 +95,19 @@ public class PaymentReportJobConfig {
 //        return paymentRepository::saveAllAndFlush;
 //    }
 
+//    @Bean
+//    public JpaItemWriter<Payment> paymentItemWriter() {
+//        JpaItemWriter<Payment> writer = new JpaItemWriter<>();
+//        writer.setEntityManagerFactory(entityManagerFactory);
+//        return writer;
+//    }
+
     @Bean
-    public JpaItemWriter<Payment> paymentItemWriter() {
-        JpaItemWriter<Payment> writer = new JpaItemWriter<>();
-        writer.setEntityManagerFactory(entityManagerFactory);
-        return writer;
+    public ItemWriter<Payment> paymentReportWriter() {
+        return chunk -> {
+            for (Payment payment : chunk) {
+                log.info("Writer paymennt: {}", payment);
+            }
+        };
     }
 }
