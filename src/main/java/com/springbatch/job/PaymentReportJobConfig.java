@@ -2,8 +2,9 @@ package com.springbatch.job;
 
 import com.springbatch.entity.Payment;
 import com.springbatch.entity.PaymentSource;
-import com.springbatch.exception.InvalidPaymentAmountException;
+import com.springbatch.exception.PartnerHttpException;
 import com.springbatch.repository.PaymentRepository;
+import com.springbatch.service.PartnerCorpService;
 import jakarta.persistence.EntityManagerFactory;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,7 +15,6 @@ import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
-import org.springframework.batch.core.step.skip.LimitCheckingItemSkipPolicy;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JpaPagingItemReader;
@@ -37,6 +37,7 @@ public class PaymentReportJobConfig {
     private final JobRepository jobRepository;
 
     private final PaymentRepository paymentRepository;
+    private final PartnerCorpService partnerCorpService;
 
     @Bean
     public Job paymentReportJob(Step paymentReportStep) {
@@ -62,6 +63,8 @@ public class PaymentReportJobConfig {
                 .processor(itemProcessor())
                 .writer(paymentReportWriter())
                 .faultTolerant()
+                .retryLimit(2)
+                .retry(PartnerHttpException.class)
                 .build();
     }
 
@@ -86,10 +89,12 @@ public class PaymentReportJobConfig {
     private ItemProcessor<PaymentSource, Payment> itemProcessor() {
         return paymentSource -> {
 
+            String partnerCorpName = partnerCorpService.getPartnerCorpName(paymentSource.getPartnerBusinessRegistrationNumber());
+
             return new Payment(null,
                     paymentSource.getFinalAmount(),
                     paymentSource.getPaymentDate(),
-                    null,
+                    partnerCorpName,
                     "COMPLETED"
             );
         };
