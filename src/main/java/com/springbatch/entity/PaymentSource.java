@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import org.hibernate.annotations.Comment;
 
 import java.math.BigDecimal;
@@ -12,6 +13,7 @@ import java.time.LocalDate;
 @Entity
 @Table(name = "payment_source")
 @Getter
+@ToString
 @NoArgsConstructor
 @AllArgsConstructor
 public class PaymentSource {

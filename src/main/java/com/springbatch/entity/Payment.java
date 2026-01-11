@@ -26,6 +26,7 @@ public class Payment {
     private BigDecimal amount;
 
     @Column(nullable = false)
+
     private LocalDate paymentDate;
 
     @Comment("파트너 사업자명")

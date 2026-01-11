@@ -2,6 +2,10 @@ package com.springbatch.job;
 
 import com.springbatch.entity.Payment;
 import com.springbatch.entity.PaymentSource;
+import com.springbatch.job.sample.SampleChunkListener;
+import com.springbatch.job.sample.SampleItemProcessListener;
+import com.springbatch.job.sample.SampleItemReadListener;
+import com.springbatch.job.sample.SampleItemWriterListener;
 import com.springbatch.repository.PaymentRepository;
 import com.springbatch.service.PartnerCorpService;
 import jakarta.persistence.EntityManagerFactory;
@@ -63,6 +67,16 @@ public class PaymentReportJobConfig {
                 .reader(paymentReportReader)
                 .processor(itemProcessor())
                 .writer(paymentReportWriter())
+                /**
+                 * 1. chunk: SampleChunkListener
+                 * 2. reader: SamepleItemReadListener
+                 * 3. processor: SampleItemProcessListesner
+                 * 4. writer: SampleItemWriterListesner
+                 * */
+                .listener(new SampleChunkListener())
+                .listener(new SampleItemReadListener())
+                .listener(new SampleItemProcessListener())
+                .listener(new SampleItemWriterListener())
                 .build();
     }
 
@@ -87,8 +101,8 @@ public class PaymentReportJobConfig {
     private ItemProcessor<PaymentSource, Payment> itemProcessor() {
         return paymentSource -> {
 
-            String partnerCorpName = partnerCorpService.getPartnerCorpName(paymentSource.getPartnerBusinessRegistrationNumber());
-//            String partnerCorpName = "tmpParterCropName";
+//            String partnerCorpName = partnerCorpService.getPartnerCorpName(paymentSource.getPartnerBusinessRegistrationNumber());
+            String partnerCorpName = "tmpParterCropName";
 
             return new Payment(null,
                     paymentSource.getFinalAmount(),
@@ -103,7 +117,7 @@ public class PaymentReportJobConfig {
     public ItemWriter<Payment> paymentReportWriter() {
         return chunk -> {
             for (Payment payment : chunk) {
-                log.info("Writer paymennt: {}", payment);
+                log.info("Writer payment: {}", payment);
             }
         };
     }

@@ -81,7 +81,5 @@ public class PartnerCorpService {
             throw new PartnerHttpException(TIME_ERROR_MSG);
         }
     }
-
-
 }
 
