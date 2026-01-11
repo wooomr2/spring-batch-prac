@@ -60,7 +60,7 @@ public class PaymentReportJobConfig {
          * */
         return new StepBuilder("paymentReportStep", jobRepository)
                 .<PaymentSource, Payment>chunk(10, transactionManager)
-                .listener(new StepDurationTrackerListner())
+                .listener(new StepDurationTrackerListener())
                 .reader(paymentReportReader)
                 .processor(itemProcessor())
                 .writer(paymentReportWriter())

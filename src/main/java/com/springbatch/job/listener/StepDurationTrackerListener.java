@@ -9,7 +9,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Slf4j
-public class StepDurationTrackerListner implements StepExecutionListener {
+public class StepDurationTrackerListener implements StepExecutionListener {
 
     @Override
     public void beforeStep(StepExecution stepExecution) {
