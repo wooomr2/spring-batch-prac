@@ -1,4 +1,4 @@
-package com.springbatch.job.sample;
+package com.springbatch.job.listener;
 
 import com.springbatch.entity.Payment;
 import lombok.extern.slf4j.Slf4j;

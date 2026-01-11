@@ -2,10 +2,7 @@ package com.springbatch.job;
 
 import com.springbatch.entity.Payment;
 import com.springbatch.entity.PaymentSource;
-import com.springbatch.job.sample.SampleChunkListener;
-import com.springbatch.job.sample.SampleItemProcessListener;
-import com.springbatch.job.sample.SampleItemReadListener;
-import com.springbatch.job.sample.SampleItemWriterListener;
+import com.springbatch.job.listener.*;
 import com.springbatch.repository.PaymentRepository;
 import com.springbatch.service.PartnerCorpService;
 import jakarta.persistence.EntityManagerFactory;
