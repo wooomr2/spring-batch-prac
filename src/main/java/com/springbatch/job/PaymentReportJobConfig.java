@@ -2,7 +2,6 @@ package com.springbatch.job;
 
 import com.springbatch.entity.Payment;
 import com.springbatch.entity.PaymentSource;
-import com.springbatch.exception.PartnerHttpException;
 import com.springbatch.repository.PaymentRepository;
 import com.springbatch.service.PartnerCorpService;
 import jakarta.persistence.EntityManagerFactory;
@@ -60,6 +59,7 @@ public class PaymentReportJobConfig {
          * */
         return new StepBuilder("paymentReportStep", jobRepository)
                 .<PaymentSource, Payment>chunk(10, transactionManager)
+                .listener(new StepDurationTrackerListner())
                 .reader(paymentReportReader)
                 .processor(itemProcessor())
                 .writer(paymentReportWriter())
