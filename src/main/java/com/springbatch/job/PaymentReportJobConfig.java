@@ -43,6 +43,7 @@ public class PaymentReportJobConfig {
     public Job paymentReportJob(Step paymentReportStep) {
         return new JobBuilder("paymentReportJob", jobRepository)
                 .incrementer(new RunIdIncrementer())
+                .listener(new JobDurationTrackerListener())
                 .start(paymentReportStep)
                 .build();
     }
@@ -62,9 +63,6 @@ public class PaymentReportJobConfig {
                 .reader(paymentReportReader)
                 .processor(itemProcessor())
                 .writer(paymentReportWriter())
-                .faultTolerant()
-                .retryLimit(2)
-                .retry(PartnerHttpException.class)
                 .build();
     }
 
@@ -90,6 +88,7 @@ public class PaymentReportJobConfig {
         return paymentSource -> {
 
             String partnerCorpName = partnerCorpService.getPartnerCorpName(paymentSource.getPartnerBusinessRegistrationNumber());
+//            String partnerCorpName = "tmpParterCropName";
 
             return new Payment(null,
                     paymentSource.getFinalAmount(),
